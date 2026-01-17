@@ -131,8 +131,11 @@ const Dashboard: React.FC = () => {
                 <div className="header-content">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
-                            <h1 className="gradient-text">Impact Analysis Platform</h1>
-                            <p className="header-subtitle">AI-Powered Cross-Repository Dependency Analysis</p>
+                            <div className="flex items-center gap-3">
+                                <span className="text-4xl text-blue-500">⚡</span>
+                                <h1 className="gradient-text m-0">Syncrup</h1>
+                            </div>
+                            <p className="header-subtitle mt-1">AI-Powered Cross-Repository Impact Analysis</p>
                         </div>
                         <button
                             onClick={loadProjects}

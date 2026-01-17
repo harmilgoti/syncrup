@@ -1,16 +1,21 @@
-import React from 'react';
-import { FileCode, Eye, EyeOff } from 'lucide-react';
+import React, { useState } from 'react';
+import { FileCode, Eye, EyeOff, Check, X } from 'lucide-react';
 import ReactDiffViewer, { DiffMethod } from 'react-diff-viewer-continued';
+import axios from 'axios';
 import '../components/ImpactAlert.css'; // Reuse existing styles
+
+const API_URL = 'http://localhost:3001';
 
 interface ImpactDetailsProps {
     impact: {
         changedFile: string;
         affectedFiles: Array<{
+            id?: string;
             repoId: string;
             filePath: string;
             reason: string;
             context?: string;
+            status?: string;
         }>;
         diff?: {
             oldContent: string;
@@ -22,6 +27,33 @@ interface ImpactDetailsProps {
 
 const ImpactDetails: React.FC<ImpactDetailsProps> = ({ impact }) => {
     const [showDiff, setShowDiff] = React.useState(false);
+    const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
+
+    const handleAction = async (id: string | undefined, status: 'RESOLVED' | 'REJECTED') => {
+        if (!id) return;
+
+        // Optimistic UI update: Hide immediately
+        setHiddenIds(prev => new Set(prev).add(id));
+
+        try {
+            await axios.patch(`${API_URL}/impacts/file/${id}/status`, { status });
+        } catch (error) {
+            console.error('Failed to update status:', error);
+            // Revert if failed (optional, but good practice)
+            setHiddenIds(prev => {
+                const next = new Set(prev);
+                next.delete(id);
+                return next;
+            });
+        }
+    };
+
+    // Filter out hidden (resolved/rejected) files
+    const visibleFiles = (impact.affectedFiles || []).filter(f => {
+        if (f.id && hiddenIds.has(f.id)) return false;
+        if (f.status && f.status !== 'PENDING') return false;
+        return true;
+    });
 
     return (
         <div className="impact-details-container">
@@ -61,16 +93,38 @@ const ImpactDetails: React.FC<ImpactDetailsProps> = ({ impact }) => {
 
             <p className="impact-explanation" style={{ marginTop: '10px', marginBottom: '10px' }}>{impact.explanation}</p>
 
-            {impact.affectedFiles && impact.affectedFiles.length > 0 && (
+            {visibleFiles.length > 0 ? (
                 <div className="impact-affected-files">
-                    <strong>Affected Files ({impact.affectedFiles.length}):</strong>
+                    <strong>Affected Files ({visibleFiles.length}):</strong>
                     <ul>
-                        {impact.affectedFiles.slice(0, 10).map((file, index) => (
-                            <li key={index}>
-                                <div className="impact-file-info">
-                                    <FileCode size={14} />
-                                    <span>{file.filePath.split('/').pop()}</span>
-                                    <span className="file-reason">{file.reason}</span>
+                        {visibleFiles.map((file, index) => (
+                            <li key={index} className="group relative">
+                                <div className="flex justify-between items-start">
+                                    <div className="impact-file-info flex-1">
+                                        <FileCode size={14} />
+                                        <span>{file.filePath.split('/').pop()}</span>
+                                        <span className="file-reason">{file.reason}</span>
+                                    </div>
+                                    {file.id && (
+                                        <div className="flex gap-2 ml-4 shrink-0">
+                                            <button
+                                                onClick={() => handleAction(file.id, 'RESOLVED')}
+                                                className="flex items-center gap-1 px-3 py-1.5 rounded-md bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-200 transition-all shadow-sm font-medium text-xs whitespace-nowrap"
+                                                title="Accept Impact (Mark as Resolved)"
+                                            >
+                                                <Check size={14} />
+                                                Accept
+                                            </button>
+                                            <button
+                                                onClick={() => handleAction(file.id, 'REJECTED')}
+                                                className="flex items-center gap-1 px-3 py-1.5 rounded-md bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 transition-all shadow-sm font-medium text-xs whitespace-nowrap"
+                                                title="Reject Impact (Ignore)"
+                                            >
+                                                <X size={14} />
+                                                Reject
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                                 {file.context && (
                                     <pre className="file-context" style={{
@@ -89,12 +143,11 @@ const ImpactDetails: React.FC<ImpactDetailsProps> = ({ impact }) => {
                                 )}
                             </li>
                         ))}
-                        {impact.affectedFiles.length > 10 && (
-                            <li className="more-files">
-                                +{impact.affectedFiles.length - 10} more files
-                            </li>
-                        )}
                     </ul>
+                </div>
+            ) : (
+                <div className="text-gray-500 italic text-sm mt-2">
+                    All affected files resolved or rejected.
                 </div>
             )}
         </div>

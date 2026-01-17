@@ -135,6 +135,32 @@ const ProjectDetailView: React.FC = () => {
             }
         });
 
+        socket.on('affected-file:updated', (data: { id: string, repoId: string, status: string, impactReportId: string }) => {
+            console.log('Affected file updated:', data);
+            setProject((prev) => {
+                if (!prev) return null;
+                const newRepos = prev.repos.map(repo => {
+                    if (repo.id !== data.repoId) return repo;
+                    const newScans = repo.scans.map((scan: any) => {
+                        const newReports = scan.impactReports.map((report: any) => {
+                            if (report.id !== data.impactReportId) return report;
+                            // Update the relational affectedFiles array
+                            const newAffectedFiles = (report.affectedFiles || []).map((f: any) =>
+                                f.id === data.id ? { ...f, status: data.status } : f
+                            );
+                            return { ...report, affectedFiles: newAffectedFiles };
+                        });
+                        return { ...scan, impactReports: newReports };
+                    });
+                    return { ...repo, scans: newScans };
+                });
+                // Refetch to ensure clean state and verify removal
+                fetchProjectDetails();
+
+                return { ...prev, repos: newRepos };
+            });
+        });
+
         return () => {
             socket.disconnect();
         };
@@ -329,13 +355,33 @@ const ProjectDetailView: React.FC = () => {
                                 ? JSON.parse(report.summary)
                                 : report.summary;
 
+                            // Prefer relational data if available (supports status updates)
+                            if (report.affectedFiles && report.affectedFiles.length > 0) {
+                                summaryData = {
+                                    ...summaryData,
+                                    affectedFiles: report.affectedFiles
+                                };
+                            }
+
+                            // Filter out commits where ALL affected files are resolved/rejected
+                            // We only include the report if at least one file is PENDING
+                            // OR if the user wants to see history (but requirement says "remove from user panel")
+                            const pendingCount = summaryData.affectedFiles ? summaryData.affectedFiles.filter((f: any) => f.status === 'PENDING').length : 0;
+                            const totalCount = summaryData.affectedFiles ? summaryData.affectedFiles.length : 0;
+
+                            // If there are files, but none are pending, it means they are all resolved/rejected.
+                            // In that case, we skip adding it to history.
+                            if (totalCount > 0 && pendingCount === 0) {
+                                return;
+                            }
+
                             history.push({
                                 key: report.id,
                                 repoName: repo.name,
                                 repoType: repo.type,
                                 commit: scan.commitHash || 'Unknown',
                                 date: new Date(report.createdAt),
-                                impactCount: summaryData.affectedFiles ? summaryData.affectedFiles.length : 0,
+                                impactCount: pendingCount,
                                 details: summaryData
                             });
                         });
@@ -357,9 +403,12 @@ const ProjectDetailView: React.FC = () => {
         <div className="h-[calc(100vh-100px)] flex flex-col">
             {/* Header */}
             {/* Premium Top Navigation */}
+            {/* Premium Top Navigation */}
             <div className="top-nav">
-                <div className="top-nav-title">
-                    {project.name}
+                <div className="top-nav-title flex items-center gap-2">
+                    <span className="text-blue-500 text-2xl">⚡</span>
+                    <span className="font-extrabold tracking-tight">Syncrup</span>
+                    <span className="text-slate-400 text-sm font-normal ml-2">| {project.name}</span>
                 </div>
                 <div>
                     <button className="btn-premium" onClick={() => setIsAddRepoModalVisible(true)}>

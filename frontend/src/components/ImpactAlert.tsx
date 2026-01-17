@@ -1,6 +1,7 @@
 import React from 'react';
-import { AlertTriangle, X, FileCode, AlertCircle } from 'lucide-react';
+import { AlertTriangle, X, AlertCircle } from 'lucide-react';
 import './ImpactAlert.css';
+import ImpactDetails from './ImpactDetails';
 
 interface ImpactAlertProps {
     impact: {
@@ -11,7 +12,12 @@ interface ImpactAlertProps {
             repoId: string;
             filePath: string;
             reason: string;
+            context?: string;
         }>;
+        diff?: {
+            oldContent: string;
+            newContent: string;
+        };
         isBreaking: boolean;
         severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
         explanation: string;
@@ -21,6 +27,7 @@ interface ImpactAlertProps {
 }
 
 const ImpactAlert: React.FC<ImpactAlertProps> = ({ impact, onDismiss }) => {
+
     const getSeverityColor = () => {
         switch (impact.severity) {
             case 'CRITICAL': return '#ef4444';
@@ -58,34 +65,7 @@ const ImpactAlert: React.FC<ImpactAlertProps> = ({ impact, onDismiss }) => {
             </div>
 
             <div className="impact-alert-body">
-                <div className="impact-changed-file">
-                    <FileCode size={16} />
-                    <span>
-                        <strong>Changed:</strong> {impact.changedFile.split('/').pop()}
-                    </span>
-                </div>
-
-                <p className="impact-explanation">{impact.explanation}</p>
-
-                {impact.affectedFiles.length > 0 && (
-                    <div className="impact-affected-files">
-                        <strong>Affected Files ({impact.affectedFiles.length}):</strong>
-                        <ul>
-                            {impact.affectedFiles.slice(0, 5).map((file, index) => (
-                                <li key={index}>
-                                    <FileCode size={14} />
-                                    <span>{file.filePath.split('/').pop()}</span>
-                                    <span className="file-reason">{file.reason}</span>
-                                </li>
-                            ))}
-                            {impact.affectedFiles.length > 5 && (
-                                <li className="more-files">
-                                    +{impact.affectedFiles.length - 5} more files
-                                </li>
-                            )}
-                        </ul>
-                    </div>
-                )}
+                <ImpactDetails impact={impact} />
             </div>
 
             <div className="impact-alert-footer">

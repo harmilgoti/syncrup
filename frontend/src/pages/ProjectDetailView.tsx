@@ -1,9 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Tag, Collapse, Table, Empty, message, Modal, Form, Input, Select } from 'antd';
+import { Card, Tag, Collapse, Table, Empty, message, Modal, Form, Input, Select } from 'antd';
 import {
-    ArrowLeftOutlined,
-    ReloadOutlined,
-    BranchesOutlined,
     HistoryOutlined,
     SyncOutlined,
     CheckCircleOutlined,
@@ -359,25 +356,16 @@ const ProjectDetailView: React.FC = () => {
     return (
         <div className="h-[calc(100vh-100px)] flex flex-col">
             {/* Header */}
-            <div className="px-6 py-4 border-b border-gray-200 bg-white flex justify-between items-center">
-                <div className="flex items-center gap-4">
-                    <Button
-                        icon={<ArrowLeftOutlined />}
-                        type="text"
-                        onClick={() => navigate('/')}
-                    />
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <h1 className="text-xl font-bold text-slate-800 m-0">{project.name}</h1>
-                            <Tag color="green">Active</Tag>
-                        </div>
-                        <p className="text-sm text-slate-500 m-0">ID: {id}</p>
-                    </div>
+            {/* Premium Top Navigation */}
+            <div className="top-nav">
+                <div className="top-nav-title">
+                    {project.name}
                 </div>
-                <div className="flex gap-3">
-                    <Button icon={<PlusOutlined />} onClick={() => setIsAddRepoModalVisible(true)}>Add Repository</Button>
-                    <Button icon={<ReloadOutlined />} onClick={() => { fetchProjectDetails(); fetchGraphData(); }}>Sync Data</Button>
-                    <Button type="primary" icon={<BranchesOutlined />}>Trigger Analysis</Button>
+                <div>
+                    <button className="btn-premium" onClick={() => setIsAddRepoModalVisible(true)}>
+                        <PlusOutlined style={{ fontSize: '16px' }} />
+                        Add Repository
+                    </button>
                 </div>
             </div>
 

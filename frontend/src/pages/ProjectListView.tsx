@@ -41,11 +41,20 @@ const ProjectListView: React.FC = () => {
                 key: p.id,
                 name: p.name,
                 repoCount: p.repos ? p.repos.length : 0,
-                // Calculate total impact alerts from nested scans -> impactReports
+                // Calculate total affected files from nested scans -> impactReports -> summary.affectedFiles.length
                 impactCount: p.repos
                     ? p.repos.reduce((acc: number, r: any) =>
-                        acc + (r.scans ? r.scans.reduce((sAcc: number, s: any) =>
-                            sAcc + (s.impactReports ? s.impactReports.length : 0), 0) : 0), 0)
+                        acc + (r.scans ? r.scans.reduce((sAcc: number, s: any) => {
+                            if (!s.impactReports) return sAcc;
+                            return sAcc + s.impactReports.reduce((rAcc: number, report: any) => {
+                                try {
+                                    const summary = typeof report.summary === 'string' ? JSON.parse(report.summary) : report.summary;
+                                    return rAcc + (summary.affectedFiles ? summary.affectedFiles.length : 0);
+                                } catch (e) {
+                                    return rAcc;
+                                }
+                            }, 0);
+                        }, 0) : 0), 0)
                     : 0,
                 lastUpdated: new Date(p.createdAt).toLocaleDateString(),
                 status: 'active'
@@ -100,14 +109,14 @@ const ProjectListView: React.FC = () => {
             )
         },
         {
-            title: 'Impact Alerts',
+            title: 'Affected Files',
             dataIndex: 'impactCount',
             key: 'impactCount',
             render: (count: number) => (
                 count > 0 ? (
                     <Badge count={count} className="site-badge-count-4">
                         <Tag color="error" className="ml-2 font-medium">
-                            {count} Critical
+                            {count} Files Affected
                         </Tag>
                     </Badge>
                 ) : (
@@ -142,7 +151,7 @@ const ProjectListView: React.FC = () => {
                     <h1 className="text-2xl font-bold text-slate-800 mb-1">Projects</h1>
                     <p className="text-slate-500">Manage and monitor code impact across your projects.</p>
                 </div>
-                <div className="flex gap-3">
+                <div className="flex gap-4">
                     <Button icon={<ReloadOutlined />} onClick={fetchProjects} loading={loading}>Refresh</Button>
                     <Button
                         type="primary"
